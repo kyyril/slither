@@ -15,6 +15,7 @@ class GameEngine {
   private ws: WebSocket | null = null;
   private clientId: string = Math.random().toString(36).substring(7);
   private isConnected: boolean = false;
+  private hasReceivedInitialState: boolean = false;
 
   constructor() {
     // We'll call connect from App.tsx when a room is selected
@@ -32,6 +33,7 @@ class GameEngine {
     this.ws.onopen = () => {
       console.log('Connected to game server');
       this.isConnected = true;
+      this.hasReceivedInitialState = false;
       this.gameId++; // Trigger React update
       this.rosterVersion++;
     };
@@ -54,6 +56,7 @@ class GameEngine {
     this.ws.onclose = (event) => {
       console.log('Disconnected from game server:', event.code, event.reason);
       this.isConnected = false;
+      this.hasReceivedInitialState = false;
       this.snakes = [];
       this.snakesMap.clear();
       this.rosterVersion++;
@@ -107,10 +110,22 @@ class GameEngine {
       this.rosterVersion++;
     }
 
-    // Backend currently doesn't send food in state (optimized)
-    // In a real app, food would be sent only when changed
-    if (data.food && data.food.length > 0) {
-      this.food = data.food;
+    // Food Delta Updates
+    if (!this.hasReceivedInitialState) {
+      // First update is guaranteed to be full state
+      if (data.food) {
+        this.food = data.food;
+        this.hasReceivedInitialState = true;
+      }
+    } else {
+      // Handle Deltas
+      if (data.eatenFood && data.eatenFood.length > 0) {
+        const eatenSet = new Set(data.eatenFood);
+        this.food = this.food.filter(f => !eatenSet.has(f.id));
+      }
+      if (data.food && data.food.length > 0) {
+        this.food.push(...data.food);
+      }
     }
 
     this.stateVersion++;

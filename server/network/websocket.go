@@ -105,12 +105,17 @@ func HandleWebSocket(hub *Hub, roomManager *manager.RoomManager, w http.Response
 		ID:   clientID,
 	}
 
-	hub.Register <- c
-
 	// Handle player join with random color
 	colors := []string{"#00ffcc", "#ff0055", "#ccff00", "#00ccff", "#ffaa00", "#aa00ff"}
 	color := colors[int(clientID[0])%len(colors)] // Simple deterministic color based on ID
 	c.Room.Engine.Join(c.ID, "Player", color)
+
+	// Send initial full state (so client has all food)
+	// Use c.Send to ensure it is the first message processed by writePump
+	fullState := c.Room.Engine.GetFullState()
+	c.Send <- fullState
+
+	hub.Register <- c
 
 	// Start reading messages
 	go c.readPump(hub)

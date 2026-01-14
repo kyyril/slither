@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"math"
 	"math/rand"
-	"sort"
+
 	"sync"
 	"time"
 
@@ -31,14 +31,20 @@ type GameEngine struct {
 	mu     sync.RWMutex
 	
 	OnUpdate func(state string) // Callback for broadcasting
+	
+	// Delta tracking buffers
+	tickNewFood   []*models.Food
+	tickEatenFood []float64
 }
 
 func NewGameEngine(onUpdate func(state string)) *GameEngine {
 	e := &GameEngine{
-		Snakes:   make(map[string]*models.Snake),
-		Food:     make(map[float64]*models.Food),
-		Grid:     NewSpatialHashGrid(GridCellSize),
-		OnUpdate: onUpdate,
+		Snakes:        make(map[string]*models.Snake),
+		Food:          make(map[float64]*models.Food),
+		Grid:          NewSpatialHashGrid(GridCellSize),
+		OnUpdate:      onUpdate,
+		tickNewFood:   make([]*models.Food, 0),
+		tickEatenFood: make([]float64, 0),
 	}
 	e.initFood()
 	return e
@@ -81,6 +87,7 @@ func (e *GameEngine) spawnFood() {
 		Energy: energy,
 	}
 	e.Food[id] = f
+	e.tickNewFood = append(e.tickNewFood, f)
 }
 
 func (e *GameEngine) Start() {
@@ -97,6 +104,10 @@ func (e *GameEngine) Update() {
 	defer e.mu.Unlock()
 
 	dt := 1.0 / float64(TickRate)
+
+	// Reset delta buffers
+	e.tickNewFood = e.tickNewFood[:0]
+	e.tickEatenFood = e.tickEatenFood[:0]
 
 	e.Grid.Clear()
 
@@ -194,6 +205,7 @@ func (e *GameEngine) Update() {
 		// Remove eaten food and respawn
 		for _, id := range foodToRemove {
 			delete(e.Food, id)
+			e.tickEatenFood = append(e.tickEatenFood, id)
 			e.spawnFood()
 		}
 		snake.Mu.Unlock()
@@ -251,23 +263,35 @@ func (e *GameEngine) Update() {
 
 	// 5. Broadcasting
 	if e.OnUpdate != nil {
-		foodSlice := make([]*models.Food, 0, len(e.Food))
-		for _, f := range e.Food {
-			foodSlice = append(foodSlice, f)
-		}
-
-		// Sort food by ID for visual stability on client
-		sort.Slice(foodSlice, func(i, j int) bool {
-			return foodSlice[i].ID < foodSlice[j].ID
-		})
-
+		// Only send deltas (New Food & Eaten Food)
+		// Snakes are sent fully for now as they move every frame
+		
 		state := models.GameState{
-			Snakes: e.Snakes,
-			Food:   foodSlice,
+			Snakes:       e.Snakes,
+			Food:         e.tickNewFood,
+			EatenFoodIDs: e.tickEatenFood,
 		}
 		data, _ := json.Marshal(state)
 		e.OnUpdate(string(data))
 	}
+}
+
+// GetFullState returns the complete state for new clients
+func (e *GameEngine) GetFullState() []byte {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	allFood := make([]*models.Food, 0, len(e.Food))
+	for _, f := range e.Food {
+		allFood = append(allFood, f)
+	}
+
+	state := models.GameState{
+		Snakes: e.Snakes,
+		Food:   allFood,
+	}
+	data, _ := json.Marshal(state)
+	return data
 }
 
 func (e *GameEngine) SetPlayerTargetAngle(id string, angle float64) {

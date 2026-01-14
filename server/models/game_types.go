@@ -36,6 +36,7 @@ type Food struct {
 }
 
 type GameState struct {
-	Snakes map[string]*Snake `json:"snakes"`
-	Food   []*Food           `json:"food"`
+	Snakes       map[string]*Snake `json:"snakes"`
+	Food         []*Food           `json:"food,omitempty"`      // Only newly spawned food in delta updates
+	EatenFoodIDs []float64         `json:"eatenFood,omitempty"` // IDs of food eaten in this tick
 }
