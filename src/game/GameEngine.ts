@@ -162,6 +162,10 @@ class GameEngine {
     return this.snakesMap.get(id);
   }
 
+  public getIsConnected() {
+    return this.isConnected;
+  }
+
   public disconnect() {
     if (this.ws) {
       this.ws.close();

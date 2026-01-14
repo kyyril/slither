@@ -35,16 +35,22 @@ export const Snake: React.FC<SnakeProps> = ({ snake }) => {
     const currentSnake = gameEngine.getSnake(snake.id);
     if (!currentSnake) return;
 
-    // 1. Update Head Position with Framerate-Independent Lerp
-    const targetX = currentSnake.head.x;
-    const targetY = currentSnake.head.y;
+    // 1. Update Head Position with Prediction & Interpolation
 
-    // Higher smoothing for snappier response, especially during boost
-    const smoothing = currentSnake.boost ? 30 : 15;
+    // Extrapolate target based on speed & angle to compensate for network lag/tick rate
+    // We assume the snake continues moving in its current direction
+    const predictionTime = delta * 1.5; // Look ahead slightly
+    const moveDist = currentSnake.speed * predictionTime;
+    const predictedX = currentSnake.head.x + Math.cos(currentSnake.angle) * moveDist;
+    const predictedY = currentSnake.head.y + Math.sin(currentSnake.angle) * moveDist;
+
+    // Use a lower smoothing factor for smoother visual convergence
+    // Ideally we want to reach the target over ~100ms
+    const smoothing = currentSnake.boost ? 15 : 8;
     const lerpT = 1 - Math.exp(-smoothing * delta);
 
-    headRef.current.position.x += (targetX - headRef.current.position.x) * lerpT;
-    headRef.current.position.y += (targetY - headRef.current.position.y) * lerpT;
+    headRef.current.position.x += (predictedX - headRef.current.position.x) * lerpT;
+    headRef.current.position.y += (predictedY - headRef.current.position.y) * lerpT;
 
     // Angle interpolation (handle wrap around)
     let diff = currentSnake.angle - headRef.current.rotation.z;

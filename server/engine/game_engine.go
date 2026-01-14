@@ -348,6 +348,7 @@ func (e *GameEngine) reclaimSnake(snake *models.Snake) {
 				Size:   0.8,
 				Energy: 2,
 			}
+			e.tickNewFood = append(e.tickNewFood, e.Food[fID])
 		}
 	}
 }
