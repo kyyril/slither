@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { gameEngine } from '../game/GameEngine';
 import { Minimap } from './Minimap';
 
@@ -11,6 +11,42 @@ export const UI: React.FC<UIProps> = ({ onLeave }) => {
   const [rank, setRank] = useState(1);
   const [totalPlayers, setTotalPlayers] = useState(0);
   const [isDead, setIsDead] = useState(false);
+
+  // Audio State
+  const [isMuted, setIsMuted] = useState(() => localStorage.getItem('bgm_muted') === 'true');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize Audio
+  useEffect(() => {
+    const audio = new Audio('/music/ingame.mp3');
+    audio.loop = true;
+    audio.volume = 0.3;
+    audioRef.current = audio;
+
+    // Try to play if not muted
+    if (!isMuted) {
+      audio.play().catch(e => console.warn('Audio play failed (user interaction needed):', e));
+    }
+
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+      audioRef.current = null;
+    };
+  }, []);
+
+  // Handle Mute Toggle
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      if (isMuted) {
+        audio.pause();
+      } else {
+        audio.play().catch(e => console.warn('Audio play failed:', e));
+      }
+      localStorage.setItem('bgm_muted', String(isMuted));
+    }
+  }, [isMuted]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -50,10 +86,21 @@ export const UI: React.FC<UIProps> = ({ onLeave }) => {
         <p>Rank: {rank} / {totalPlayers + (isDead ? 1 : 0)}</p>
       </div>
 
-      <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
+      <div className="absolute top-4 right-4 flex gap-2 items-start">
+        <button
+          onClick={() => setIsMuted(!isMuted)}
+          className="pointer-events-auto p-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600 text-white rounded-md backdrop-blur-md transition-all active:scale-95 flex items-center justify-center h-[34px] w-[34px]"
+          title={isMuted ? "Unmute Music" : "Mute Music"}
+        >
+          {isMuted ? (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z" /><line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" /></svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          )}
+        </button>
         <button
           onClick={onLeave}
-          className="pointer-events-auto px-4 py-1.5 bg-red-500/20 hover:bg-red-500/40 border border-red-500/50 text-red-100 text-xs font-bold rounded-md backdrop-blur-md transition-all active:scale-95"
+          className="pointer-events-auto px-4 py-1.5 bg-red-500/20 hover:bg-red-500/40 border border-red-500/50 text-red-100 text-xs font-bold rounded-md backdrop-blur-md transition-all active:scale-95 h-[34px]"
         >
           QUIT GAME
         </button>
