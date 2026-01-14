@@ -31,13 +31,14 @@ export const Minimap: React.FC = () => {
             const snakes = gameEngine.snakes;
 
             // Helper to convert game coords to minimap coords
-            const toMinimap = (val: number) => (val / (mapRadius * 2)) * size + size / 2;
+            const toMinimapX = (val: number) => (val / (mapRadius * 2)) * size + size / 2;
+            const toMinimapY = (val: number) => size / 2 - (val / (mapRadius * 2)) * size;
 
             // Draw other snakes
             snakes.forEach(s => {
                 if (s.id === player?.id) return;
-                const mx = toMinimap(s.head.x);
-                const my = toMinimap(s.head.y);
+                const mx = toMinimapX(s.head.x);
+                const my = toMinimapY(s.head.y);
 
                 ctx.beginPath();
                 ctx.arc(mx, my, 1.5, 0, Math.PI * 2);
@@ -47,8 +48,8 @@ export const Minimap: React.FC = () => {
 
             // Draw player snake
             if (player) {
-                const px = toMinimap(player.head.x);
-                const py = toMinimap(player.head.y);
+                const px = toMinimapX(player.head.x);
+                const py = toMinimapY(player.head.y);
 
                 // Draw a pulsing dot for player
                 const pulse = Math.sin(Date.now() / 200) * 0.5 + 1.5;

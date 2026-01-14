@@ -32,7 +32,7 @@ const App: React.FC = () => {
               stencil: false,
               depth: true
             }}
-            camera={{ position: [0, 0, 50], fov: 45 }}
+            camera={{ position: [0, 0, 50], fov: 45, far: 5000 }}
           >
             <Suspense fallback={null}>
               <GameScene />

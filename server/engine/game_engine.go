@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math"
 	"math/rand"
+	"sort"
 	"sync"
 	"time"
 
@@ -19,7 +20,7 @@ const (
 	TurnSpeed      = 4.5
 	SegmentDist    = 1.5
 	StartLength    = 20
-	FoodCount      = 2000
+	FoodCount      = 5000
 	GridCellSize   = 100.0
 )
 
@@ -52,13 +53,32 @@ func (e *GameEngine) initFood() {
 func (e *GameEngine) spawnFood() {
 	id := rand.Float64()
 	colors := []string{"#ffffff", "#ffff00", "#ff00ff", "#00ffff", "#ffaa00", "#00ffcc"}
+	
+	size := 0.5
+	energy := 1.0
+	color := colors[rand.Intn(len(colors))]
+
+	// Variance in food size/energy
+	r := rand.Float64()
+	if r < 0.02 { // 2% Epic food
+		size = 1.8
+		energy = 8.0
+		color = "#ff0055" // Hot neon pink
+	} else if r < 0.12 { // 10% Large food
+		size = 1.0
+		energy = 3.0
+	} else if r < 0.3 { // 18% Medium food
+		size = 0.7
+		energy = 1.5
+	}
+
 	f := &models.Food{
 		ID:     id,
-		X:      rand.Float64()*MapSize*2 - MapSize,
-		Y:      rand.Float64()*MapSize*2 - MapSize,
-		Color:  colors[rand.Intn(len(colors))],
-		Size:   0.5,
-		Energy: 1,
+		X:      (rand.Float64()*2 - 1) * MapSize,
+		Y:      (rand.Float64()*2 - 1) * MapSize,
+		Color:  color,
+		Size:   size,
+		Energy: energy,
 	}
 	e.Food[id] = f
 }
@@ -79,6 +99,12 @@ func (e *GameEngine) Update() {
 	dt := 1.0 / float64(TickRate)
 
 	e.Grid.Clear()
+
+	// 0. Replenish Food if below count
+	missing := FoodCount - len(e.Food)
+	for i := 0; i < missing; i++ {
+		e.spawnFood()
+	}
 
 	// 1. Update Snakes
 	for _, snake := range e.Snakes {
@@ -118,9 +144,12 @@ func (e *GameEngine) Update() {
 		snake.Head.X += math.Cos(snake.Angle) * moveDist
 		snake.Head.Y += math.Sin(snake.Angle) * moveDist
 
-		// Path updates (simplification: store head in path)
+		// Path updates
 		snake.Path = append([]models.Point{snake.Head}, snake.Path...)
-		maxPathPoints := int(snake.Length * 15)
+		// 15 was way too much, making snake 8x longer physically than visually.
+		// Visual spacing is width*0.5. Point distance is speed/30.
+		// ratio = (width*0.5)/(speed/30) = (1.5*0.5)/(12/30) = 0.75 / 0.4 = 1.875
+		maxPathPoints := int(snake.Length * 2.5) 
 		if len(snake.Path) > maxPathPoints {
 			snake.Path = snake.Path[:maxPathPoints]
 		}
@@ -131,16 +160,18 @@ func (e *GameEngine) Update() {
 			snake.Dead = true
 			e.reclaimSnake(snake)
 		}
-
-		snake.Mu.Unlock()
 		
-		// Insert into grid for collision checks
+		// Insert into grid for spatial optimization (if used later)
 		e.Grid.Insert(&gridEntity{id: snake.ID, x: snake.Head.X, y: snake.Head.Y, isSnake: true})
+		
+		snake.Mu.Unlock()
 	}
 
 	// 2. Food Collision
 	for _, snake := range e.Snakes {
+		snake.Mu.Lock()
 		if snake.Dead {
+			snake.Mu.Unlock()
 			continue
 		}
 
@@ -165,20 +196,30 @@ func (e *GameEngine) Update() {
 			delete(e.Food, id)
 			e.spawnFood()
 		}
+		snake.Mu.Unlock()
 	}
 
 	// 3. Snake Collisions (Head to Body)
 	for _, snake := range e.Snakes {
+		snake.Mu.Lock()
 		if snake.Dead {
+			snake.Mu.Unlock()
 			continue
 		}
 		
 		// Check against all other snakes (and self, but skip head area)
 		for _, other := range e.Snakes {
+			// Skip self-locking if we were to lock 'other', 
+			// but 'other' fields are accessed read-only.
+			// NOTE: This is still slightly racy if other.Path is modified,
+			// but other is almost certainly updated in the same thread.
+			
+			// Collision threshold
+			threshold := (snake.Width + other.Width) * 0.5
+			thresholdSq := threshold * threshold
+			
 			// Collision with other snake's body
-			// For simplicity and performance, check against path points
-			// Skip points near the head
-			skipPoints := 10
+			skipPoints := 18
 			for i, p := range other.Path {
 				if other.ID == snake.ID && i < skipPoints {
 					continue
@@ -188,9 +229,7 @@ func (e *GameEngine) Update() {
 				dy := snake.Head.Y - p.Y
 				distSq := dx*dx + dy*dy
 				
-				// Collision threshold
-				threshold := (snake.Width + other.Width) * 0.5
-				if distSq < threshold*threshold {
+				if distSq < thresholdSq {
 					snake.Dead = true
 					e.reclaimSnake(snake)
 					break
@@ -200,6 +239,7 @@ func (e *GameEngine) Update() {
 				break
 			}
 		}
+		snake.Mu.Unlock()
 	}
 
 	// 4. Cleanup dead snakes
@@ -215,6 +255,11 @@ func (e *GameEngine) Update() {
 		for _, f := range e.Food {
 			foodSlice = append(foodSlice, f)
 		}
+
+		// Sort food by ID for visual stability on client
+		sort.Slice(foodSlice, func(i, j int) bool {
+			return foodSlice[i].ID < foodSlice[j].ID
+		})
 
 		state := models.GameState{
 			Snakes: e.Snakes,

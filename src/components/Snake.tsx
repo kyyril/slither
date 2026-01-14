@@ -24,8 +24,8 @@ export const Snake: React.FC<SnakeProps> = ({ snake }) => {
   // We determine max instances to allocate buffer.
   const maxSegments = 1000; // Cap visual length to avoid buffer overflow
 
-  const lastPos = useRef(new THREE.Vector3());
-  const lastAngle = useRef(0);
+  // We maintain a local smooth path that follows the interpolated head
+  const smoothPathRef = useRef<{ x: number, y: number }[]>([]);
 
   useFrame((state, delta) => {
     if (!meshRef.current || !headRef.current) return;
@@ -34,8 +34,8 @@ export const Snake: React.FC<SnakeProps> = ({ snake }) => {
     const targetX = snake.head.x;
     const targetY = snake.head.y;
 
-    // Smoothness factor (higher = faster snap to server, lower = smoother but more lag)
-    const smoothing = 10;
+    // Higher smoothing for snappier response, especially during boost
+    const smoothing = snake.boost ? 30 : 15;
     const lerpT = 1 - Math.exp(-smoothing * delta);
 
     headRef.current.position.x += (targetX - headRef.current.position.x) * lerpT;
@@ -49,37 +49,51 @@ export const Snake: React.FC<SnakeProps> = ({ snake }) => {
 
     headRef.current.scale.setScalar(snake.width);
 
-    // 2. Update Body Segments (InstancedMesh)
-    const path = snake.path;
-    if (path.length < 1) return;
+    // 2. Update Local Smooth Path
+    const curHead = { x: headRef.current.position.x, y: headRef.current.position.y };
+
+    // Initialize or handle jumps (reset path if too far)
+    if (smoothPathRef.current.length === 0) {
+      smoothPathRef.current = Array(10).fill(curHead);
+    }
+
+    const firstPoint = smoothPathRef.current[0];
+    const distToHead = Math.hypot(curHead.x - firstPoint.x, curHead.y - firstPoint.y);
+
+    // We only add points when the head has moved enough to avoid overcrowding
+    const minStep = 0.5;
+    if (distToHead > minStep) {
+      smoothPathRef.current.unshift(curHead);
+      // Keep path long enough for the snake plus some buffer
+      const maxPathLen = Math.ceil(snake.length * 5) + 100;
+      if (smoothPathRef.current.length > maxPathLen) {
+        smoothPathRef.current.pop();
+      }
+    }
+
+    // 3. Update Body Segments (InstancedMesh)
+    const points = smoothPathRef.current;
+    if (points.length < 1) return;
 
     let distTravelled = 0;
     let segmentIndex = 0;
-
-    // The gap between interpolated head and first server path point
-    // We bridge this gap smoothly to avoid "stretching" glitch
-    const currentHeadPos = headRef.current.position;
-
-    // We use a virtual path that starts from the interpolated head
-    // and continues through the server path
-    const extendedPath = [{ x: currentHeadPos.x, y: currentHeadPos.y }, ...path];
-
-    // Spacing between segments
     const spacing = snake.width * 0.5;
 
-    for (let i = 1; i < extendedPath.length; i++) {
-      const p1 = extendedPath[i - 1];
-      const p2 = extendedPath[i];
-      const dx = p1.x - p2.x;
-      const dy = p1.y - p2.y;
+    // We start from the interpolated head position itself
+    let prevP = curHead;
+
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const dx = prevP.x - p.x;
+      const dy = prevP.y - p.y;
       const segLen = Math.sqrt(dx * dx + dy * dy);
 
       if (segLen < 0.001) continue;
 
       while (distTravelled + segLen > (segmentIndex + 1) * spacing) {
         const t = ((segmentIndex + 1) * spacing - distTravelled) / segLen;
-        const cx = p1.x + (p2.x - p1.x) * t;
-        const cy = p1.y + (p2.y - p1.y) * t;
+        const cx = prevP.x + (p.x - prevP.x) * t;
+        const cy = prevP.y + (p.y - prevP.y) * t;
 
         tempObject.position.set(cx, cy, 0);
 
@@ -95,6 +109,7 @@ export const Snake: React.FC<SnakeProps> = ({ snake }) => {
       }
 
       distTravelled += segLen;
+      prevP = p;
       if (segmentIndex >= snake.length || segmentIndex >= maxSegments) break;
     }
 

@@ -2,12 +2,12 @@ import { GameConfig } from './types';
 
 export const CONFIG: GameConfig = {
   mapSize: 1000, // Reduced from 2500 for better player interaction
-  foodCount: 2000,
+  foodCount: 5000,
   botCount: 0,
 };
 
 // Maximum number of food particles to render (Initial + Dead bodies)
-export const MAX_FOOD_COUNT = 5000;
+export const MAX_FOOD_COUNT = 10000;
 
 export const COLORS = {
   background: '#050505',

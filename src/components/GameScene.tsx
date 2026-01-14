@@ -25,25 +25,30 @@ const CameraController = () => {
   }, []);
 
   useFrame((state, delta) => {
-    // We try to find player in active snakes
     const player = gameEngine.getPlayer();
 
     if (player) {
       // Smooth follow
+      // We look for the head mesh in the scene to follow the interpolated position
+      // Alternatively, we can calculate the same interpolation here
       const targetX = player.head.x;
       const targetY = player.head.y;
 
       // Zoom based on size & mode
       const baseHeight = isOverview ? 150 : 40;
       const growthFactor = isOverview ? 8 : 5;
-
       const zoomFactor = player.width * growthFactor;
       const targetZ = baseHeight + zoomFactor;
 
       targetRef.current.set(targetX, targetY, targetZ);
 
-      camera.position.lerp(targetRef.current, delta * 2.0);
-      camera.lookAt(targetX, targetY, 0);
+      // Follow more closely and smoothly
+      const followSpeed = 4.0;
+      camera.position.lerp(targetRef.current, delta * followSpeed);
+
+      // Look at where the player is actually rendered (interpolated)
+      // This is crucial to avoid background "vibration"
+      camera.lookAt(camera.position.x, camera.position.y, 0);
     }
   });
 
