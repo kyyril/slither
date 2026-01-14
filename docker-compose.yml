@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_URL=redis://default:2TcsBj5cbjO7lZF9fgzfUNDTx9t7BTnk@redis-15148.c295.ap-southeast-1-1.ec2.cloud.redislabs.com:15148
+    networks:
+      - slither-network
+
+networks:
+  slither-network:
+    driver: bridge

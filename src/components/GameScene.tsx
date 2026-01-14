@@ -23,25 +23,25 @@ const CameraController = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-  
+
   useFrame((state, delta) => {
     // We try to find player in active snakes
     const player = gameEngine.getPlayer();
-    
+
     if (player) {
       // Smooth follow
       const targetX = player.head.x;
       const targetY = player.head.y;
-      
+
       // Zoom based on size & mode
       const baseHeight = isOverview ? 150 : 40;
       const growthFactor = isOverview ? 8 : 5;
-      
-      const zoomFactor = player.width * growthFactor; 
+
+      const zoomFactor = player.width * growthFactor;
       const targetZ = baseHeight + zoomFactor;
 
       targetRef.current.set(targetX, targetY, targetZ);
-      
+
       camera.position.lerp(targetRef.current, delta * 2.0);
       camera.lookAt(targetX, targetY, 0);
     }
@@ -53,21 +53,21 @@ const CameraController = () => {
 // Input Handler Component
 const InputHandler = () => {
   const { gl, camera } = useThree();
-  
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       // Calculate mouse position relative to center of screen
       const centerX = window.innerWidth / 2;
       const centerY = window.innerHeight / 2;
-      
+
       const dx = e.clientX - centerX;
       const dy = e.clientY - centerY;
-      
+
       // Calculate angle
       // Note: In screen space, Y is down (positive). In 3D space, Y is up.
       // So -dy.
       const angle = Math.atan2(-dy, dx);
-      
+
       gameEngine.setPlayerTargetAngle(angle);
     };
 
@@ -97,44 +97,49 @@ export const GameScene: React.FC = () => {
   // Sync React state with GameEngine occasionally or on frame
   useFrame((state, delta) => {
     gameEngine.update(delta);
-    
+
     const engineSnakes = gameEngine.snakes;
     const engineId = gameEngine.gameId;
+    const engineVersion = gameEngine.stateVersion;
 
-    // Check if snake count changed or game restarted to force re-render of list
+    // Trigger re-render if connection changed, snake count changed, or state updated
     if (engineId !== gameId ||
-        engineSnakes.length !== snakes.length || 
-        (engineSnakes.length > 0 && snakes.length > 0 && engineSnakes[0].id !== snakes[0].id)) {
+      engineSnakes.length !== snakes.length ||
+      stateVersionRef.current !== engineVersion) {
+
+      stateVersionRef.current = engineVersion;
       setGameId(engineId);
       setSnakes([...engineSnakes]);
     }
   });
 
+  const stateVersionRef = useRef(0);
+
   return (
     <>
       <color attach="background" args={['#050505']} />
-      
+
       <CameraController />
       <InputHandler />
 
       {/* Lighting */}
       <ambientLight intensity={0.5} />
       <pointLight position={[0, 0, 20]} intensity={1} distance={50} />
-      
+
       {/* Game Objects */}
       <Background />
       <FoodField />
-      
+
       {snakes.map((snake) => (
         <Snake key={snake.id} snake={snake} />
       ))}
 
       {/* Effects */}
       <EffectComposer disableNormalPass>
-        <Bloom 
-          luminanceThreshold={0.2} 
-          mipmapBlur 
-          intensity={1.5} 
+        <Bloom
+          luminanceThreshold={0.2}
+          mipmapBlur
+          intensity={1.5}
           radius={0.6}
         />
       </EffectComposer>

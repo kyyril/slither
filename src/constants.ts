@@ -1,7 +1,7 @@
 import { GameConfig } from './types';
 
 export const CONFIG: GameConfig = {
-  mapSize: 200, // The map is -100 to 100
+  mapSize: 1000, // Reduced from 2500 for better player interaction
   foodCount: 2000,
   botCount: 0,
 };

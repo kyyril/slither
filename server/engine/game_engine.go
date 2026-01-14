@@ -1,0 +1,302 @@
+package engine
+
+import (
+	"encoding/json"
+	"math"
+	"math/rand"
+	"sync"
+	"time"
+
+	"github.com/user/slither-server/models"
+)
+
+const (
+	TickRate       = 30
+	TickDuration   = time.Second / TickRate
+	MapSize        = 1000.0 // Reduced for better player density
+	BaseSpeed      = 12.0
+	BoostSpeed     = 24.0
+	TurnSpeed      = 4.5
+	SegmentDist    = 1.5
+	StartLength    = 20
+	FoodCount      = 2000
+	GridCellSize   = 100.0
+)
+
+type GameEngine struct {
+	Snakes map[string]*models.Snake
+	Food   map[float64]*models.Food
+	Grid   *SpatialHashGrid
+	mu     sync.RWMutex
+	
+	OnUpdate func(state string) // Callback for broadcasting
+}
+
+func NewGameEngine(onUpdate func(state string)) *GameEngine {
+	e := &GameEngine{
+		Snakes:   make(map[string]*models.Snake),
+		Food:     make(map[float64]*models.Food),
+		Grid:     NewSpatialHashGrid(GridCellSize),
+		OnUpdate: onUpdate,
+	}
+	e.initFood()
+	return e
+}
+
+func (e *GameEngine) initFood() {
+	for i := 0; i < FoodCount; i++ {
+		e.spawnFood()
+	}
+}
+
+func (e *GameEngine) spawnFood() {
+	id := rand.Float64()
+	colors := []string{"#ffffff", "#ffff00", "#ff00ff", "#00ffff", "#ffaa00", "#00ffcc"}
+	f := &models.Food{
+		ID:     id,
+		X:      rand.Float64()*MapSize*2 - MapSize,
+		Y:      rand.Float64()*MapSize*2 - MapSize,
+		Color:  colors[rand.Intn(len(colors))],
+		Size:   0.5,
+		Energy: 1,
+	}
+	e.Food[id] = f
+}
+
+func (e *GameEngine) Start() {
+	ticker := time.NewTicker(TickDuration)
+	go func() {
+		for range ticker.C {
+			e.Update()
+		}
+	}()
+}
+
+func (e *GameEngine) Update() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	dt := 1.0 / float64(TickRate)
+
+	e.Grid.Clear()
+
+	// 1. Update Snakes
+	for _, snake := range e.Snakes {
+		snake.Mu.Lock()
+		if snake.Dead {
+			snake.Mu.Unlock()
+			continue
+		}
+
+		// Turn logic
+		diff := snake.TargetAngle - snake.Angle
+		for diff <= -math.Pi {
+			diff += math.Pi * 2
+		}
+		for diff > math.Pi {
+			diff -= math.Pi * 2
+		}
+
+		turnAmount := TurnSpeed * dt
+		if math.Abs(diff) < turnAmount {
+			snake.Angle = snake.TargetAngle
+		} else {
+			if diff > 0 {
+				snake.Angle += turnAmount
+			} else {
+				snake.Angle -= turnAmount
+			}
+		}
+
+		// Move Head
+		speed := BaseSpeed
+		if snake.Boost {
+			speed = BoostSpeed
+		}
+		moveDist := speed * dt
+
+		snake.Head.X += math.Cos(snake.Angle) * moveDist
+		snake.Head.Y += math.Sin(snake.Angle) * moveDist
+
+		// Path updates (simplification: store head in path)
+		snake.Path = append([]models.Point{snake.Head}, snake.Path...)
+		maxPathPoints := int(snake.Length * 15)
+		if len(snake.Path) > maxPathPoints {
+			snake.Path = snake.Path[:maxPathPoints]
+		}
+
+		// Circular Boundary Check
+		distSq := snake.Head.X*snake.Head.X + snake.Head.Y*snake.Head.Y
+		if distSq > MapSize*MapSize {
+			snake.Dead = true
+			e.reclaimSnake(snake)
+		}
+
+		snake.Mu.Unlock()
+		
+		// Insert into grid for collision checks
+		e.Grid.Insert(&gridEntity{id: snake.ID, x: snake.Head.X, y: snake.Head.Y, isSnake: true})
+	}
+
+	// 2. Food Collision
+	for _, snake := range e.Snakes {
+		if snake.Dead {
+			continue
+		}
+
+		// Check collision with food
+		foodToRemove := []float64{}
+		for id, food := range e.Food {
+			dx := snake.Head.X - food.X
+			dy := snake.Head.Y - food.Y
+			dist := math.Sqrt(dx*dx + dy*dy)
+
+			if dist < snake.Width+food.Size {
+				// Eat the food
+				snake.Score += int(food.Energy * 10)
+				snake.Length += food.Energy * 0.5
+				snake.Width = 1.5 + math.Min(2, snake.Length*0.01)
+				foodToRemove = append(foodToRemove, id)
+			}
+		}
+
+		// Remove eaten food and respawn
+		for _, id := range foodToRemove {
+			delete(e.Food, id)
+			e.spawnFood()
+		}
+	}
+
+	// 3. Snake Collisions (Head to Body)
+	for _, snake := range e.Snakes {
+		if snake.Dead {
+			continue
+		}
+		
+		// Check against all other snakes (and self, but skip head area)
+		for _, other := range e.Snakes {
+			// Collision with other snake's body
+			// For simplicity and performance, check against path points
+			// Skip points near the head
+			skipPoints := 10
+			for i, p := range other.Path {
+				if other.ID == snake.ID && i < skipPoints {
+					continue
+				}
+				
+				dx := snake.Head.X - p.X
+				dy := snake.Head.Y - p.Y
+				distSq := dx*dx + dy*dy
+				
+				// Collision threshold
+				threshold := (snake.Width + other.Width) * 0.5
+				if distSq < threshold*threshold {
+					snake.Dead = true
+					e.reclaimSnake(snake)
+					break
+				}
+			}
+			if snake.Dead {
+				break
+			}
+		}
+	}
+
+	// 4. Cleanup dead snakes
+	for id, snake := range e.Snakes {
+		if snake.Dead {
+			delete(e.Snakes, id)
+		}
+	}
+
+	// 5. Broadcasting
+	if e.OnUpdate != nil {
+		foodSlice := make([]*models.Food, 0, len(e.Food))
+		for _, f := range e.Food {
+			foodSlice = append(foodSlice, f)
+		}
+
+		state := models.GameState{
+			Snakes: e.Snakes,
+			Food:   foodSlice,
+		}
+		data, _ := json.Marshal(state)
+		e.OnUpdate(string(data))
+	}
+}
+
+func (e *GameEngine) SetPlayerTargetAngle(id string, angle float64) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	if s, ok := e.Snakes[id]; ok {
+		s.Mu.Lock()
+		s.TargetAngle = angle
+		s.Mu.Unlock()
+	}
+}
+
+func (e *GameEngine) SetPlayerBoost(id string, boost bool) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	if s, ok := e.Snakes[id]; ok {
+		s.Mu.Lock()
+		s.Boost = boost
+		s.Mu.Unlock()
+	}
+}
+
+func (e *GameEngine) Join(id, name, color string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	
+	e.Snakes[id] = &models.Snake{
+		ID:          id,
+		PlayerName:  name,
+		Color:       color,
+		Head:        models.Point{X: (rand.Float64() - 0.5) * MapSize * 0.4, Y: (rand.Float64() - 0.5) * MapSize * 0.4},
+		Angle:       rand.Float64() * math.Pi * 2,
+		TargetAngle: 0,
+		Speed:       BaseSpeed,
+		Width:       1.5,
+		Length:      StartLength,
+		Score:       0,
+		Boost:       false,
+		Dead:        false,
+		Path:        []models.Point{},
+	}
+}
+
+func (e *GameEngine) reclaimSnake(snake *models.Snake) {
+	for i, p := range snake.Path {
+		// Only spawn food for some segments
+		if i%2 == 0 {
+			fID := rand.Float64() + float64(i)*0.000001
+			e.Food[fID] = &models.Food{
+				ID:     fID,
+				X:      p.X,
+				Y:      p.Y,
+				Color:  snake.Color,
+				Size:   0.8,
+				Energy: 2,
+			}
+		}
+	}
+}
+
+func (e *GameEngine) RemoveSnake(id string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	delete(e.Snakes, id)
+}
+
+
+
+// Helper for grid insertion
+type gridEntity struct {
+	id      string
+	x, y    float64
+	isSnake bool
+}
+
+func (g *gridEntity) GetPosition() (x, y float64) { return g.x, g.y }
+func (g *gridEntity) GetID() string              { return g.id }
