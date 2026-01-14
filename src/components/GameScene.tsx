@@ -79,14 +79,50 @@ const InputHandler = () => {
     const handleMouseDown = () => gameEngine.setPlayerBoost(true);
     const handleMouseUp = () => gameEngine.setPlayerBoost(false);
 
+    // Touch Handling (Mobile)
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault(); // Prevent scrolling
+      if (e.touches.length > 0) {
+        const touch = e.touches[0];
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const dx = touch.clientX - centerX;
+        const dy = touch.clientY - centerY;
+        const angle = Math.atan2(-dy, dx);
+        gameEngine.setPlayerTargetAngle(angle);
+      }
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      // If 2 fingers, boost
+      if (e.touches.length > 1) {
+        gameEngine.setPlayerBoost(true);
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        gameEngine.setPlayerBoost(false);
+      }
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
+
+    // Add passive: false to prevent scrolling
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchstart', handleTouchStart, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
+
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
     };
   }, []);
 
@@ -142,7 +178,7 @@ export const GameScene: React.FC = () => {
       ))}
 
       {/* Effects */}
-      <EffectComposer disableNormalPass>
+      <EffectComposer>
         <Bloom
           luminanceThreshold={0.2}
           mipmapBlur

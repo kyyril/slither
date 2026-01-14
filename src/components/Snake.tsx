@@ -153,7 +153,7 @@ export const Snake: React.FC<SnakeProps> = ({ snake }) => {
         args={[undefined, undefined, maxSegments]}
         frustumCulled={false} // Prevent culling issues with dynamic bounds
       >
-        <sphereGeometry args={[1, 12, 12]} />
+        <sphereGeometry args={[1, 8, 8]} /> {/* Optimized from 12x12 for mobile */}
         <meshStandardMaterial
           color={snake.color}
           emissive={snake.color}
@@ -165,7 +165,7 @@ export const Snake: React.FC<SnakeProps> = ({ snake }) => {
 
       {/* The Head (Separate Mesh for detail/eyes) */}
       <mesh ref={headRef}>
-        <sphereGeometry args={[1, 16, 16]} />
+        <sphereGeometry args={[1, 12, 12]} /> {/* Slightly higher detailed head */}
         <meshStandardMaterial
           color={snake.color}
           emissive={snake.color}

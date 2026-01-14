@@ -50,7 +50,7 @@ const App: React.FC = () => {
       {gameState === 'playing' && (
         <>
           <Canvas
-            dpr={[1, 2]} // Handle high DPI screens
+            dpr={[1, 1.5]} // Cap DPR at 1.5 for mobile performance
             gl={{
               antialias: false, // Post-processing handles smoothing, disable AA for perf
               powerPreference: "high-performance",
