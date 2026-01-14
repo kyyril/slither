@@ -16,7 +16,8 @@ export const RoomSelector: React.FC<RoomSelectorProps> = ({ onSelect }) => {
     useEffect(() => {
         const fetchRooms = async () => {
             try {
-                const response = await fetch('http://localhost:8080/rooms');
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+                const response = await fetch(`${apiUrl}/rooms`);
                 const data = await response.json();
                 setRooms(data || []);
             } catch (error) {

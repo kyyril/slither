@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/user/slither-server/manager"
 	"github.com/user/slither-server/network"
@@ -24,12 +25,21 @@ func main() {
 		})
 	}
 
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+	if allowedOrigins == "" {
+		allowedOrigins = "*"
+	}
+
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		network.HandleWebSocket(hub, roomManager, w, r)
 	})
 
 	http.HandleFunc("/rooms", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Origin", allowedOrigins)
 		w.Header().Set("Content-Type", "application/json")
 		rooms := roomManager.ListRooms()
 		
@@ -44,8 +54,8 @@ func main() {
 		}
 	})
 
-	log.Println("Server starting on :8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	log.Printf("Server starting on :%s", port)
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal(err)
 	}
 }

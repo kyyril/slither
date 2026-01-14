@@ -51,10 +51,6 @@ export const UI: React.FC<UIProps> = ({ onLeave }) => {
       </div>
 
       <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
-        <div className="text-white/50 text-xs text-right">
-          <p>FPS Optimized</p>
-          <p>WebGL / R3F</p>
-        </div>
         <button
           onClick={onLeave}
           className="pointer-events-auto px-4 py-1.5 bg-red-500/20 hover:bg-red-500/40 border border-red-500/50 text-red-100 text-xs font-bold rounded-md backdrop-blur-md transition-all active:scale-95"

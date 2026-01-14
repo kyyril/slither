@@ -22,8 +22,8 @@ class GameEngine {
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = 'localhost:8080'; // Hardcoded for local dev
-    this.ws = new WebSocket(`${protocol}//${host}/ws?room=${encodeURIComponent(roomID)}&id=${this.clientId}`);
+    const serverUrl = import.meta.env.VITE_SERVER_URL || 'localhost:8080';
+    this.ws = new WebSocket(`${protocol}//${serverUrl}/ws?room=${encodeURIComponent(roomID)}&id=${this.clientId}`);
 
     this.ws.onopen = () => {
       console.log('Connected to game server');

@@ -8,7 +8,9 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - REDIS_URL=redis://default:2TcsBj5cbjO7lZF9fgzfUNDTx9t7BTnk@redis-15148.c295.ap-southeast-1-1.ec2.cloud.redislabs.com:15148
+      - PORT=8080
+      - ALLOWED_ORIGINS=*
+      - REDIS_URL=${REDIS_URL}
     networks:
       - slither-network
 
