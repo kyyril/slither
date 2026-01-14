@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { SnakeState } from '../types';
 import { SNAKE_OPTS } from '../constants';
+import { gameEngine } from '../game/GameEngine';
 
 interface SnakeProps {
   snake: SnakeState;
@@ -30,24 +31,28 @@ export const Snake: React.FC<SnakeProps> = ({ snake }) => {
   useFrame((state, delta) => {
     if (!meshRef.current || !headRef.current) return;
 
+    // Fetch latest data directly from engine to avoid React render cycle dependency
+    const currentSnake = gameEngine.getSnake(snake.id);
+    if (!currentSnake) return;
+
     // 1. Update Head Position with Framerate-Independent Lerp
-    const targetX = snake.head.x;
-    const targetY = snake.head.y;
+    const targetX = currentSnake.head.x;
+    const targetY = currentSnake.head.y;
 
     // Higher smoothing for snappier response, especially during boost
-    const smoothing = snake.boost ? 30 : 15;
+    const smoothing = currentSnake.boost ? 30 : 15;
     const lerpT = 1 - Math.exp(-smoothing * delta);
 
     headRef.current.position.x += (targetX - headRef.current.position.x) * lerpT;
     headRef.current.position.y += (targetY - headRef.current.position.y) * lerpT;
 
     // Angle interpolation (handle wrap around)
-    let diff = snake.angle - headRef.current.rotation.z;
+    let diff = currentSnake.angle - headRef.current.rotation.z;
     while (diff < -Math.PI) diff += Math.PI * 2;
     while (diff > Math.PI) diff -= Math.PI * 2;
     headRef.current.rotation.z += diff * lerpT;
 
-    headRef.current.scale.setScalar(snake.width);
+    headRef.current.scale.setScalar(currentSnake.width);
 
     // 2. Update Local Smooth Path
     const curHead = { x: headRef.current.position.x, y: headRef.current.position.y };
@@ -65,7 +70,7 @@ export const Snake: React.FC<SnakeProps> = ({ snake }) => {
     if (distToHead > minStep) {
       smoothPathRef.current.unshift(curHead);
       // Keep path long enough for the snake plus some buffer
-      const maxPathLen = Math.ceil(snake.length * 5) + 100;
+      const maxPathLen = Math.ceil(currentSnake.length * 5) + 100;
       if (smoothPathRef.current.length > maxPathLen) {
         smoothPathRef.current.pop();
       }
@@ -77,7 +82,7 @@ export const Snake: React.FC<SnakeProps> = ({ snake }) => {
 
     let distTravelled = 0;
     let segmentIndex = 0;
-    const spacing = snake.width * 0.5;
+    const spacing = currentSnake.width * 0.5;
 
     // We start from the interpolated head position itself
     let prevP = curHead;
@@ -98,19 +103,19 @@ export const Snake: React.FC<SnakeProps> = ({ snake }) => {
         tempObject.position.set(cx, cy, 0);
 
         // Taper the tail
-        const scale = snake.width * (1 - (segmentIndex / (snake.length * 2 + 10)));
-        tempObject.scale.setScalar(Math.max(scale, snake.width * 0.3));
+        const scale = currentSnake.width * (1 - (segmentIndex / (currentSnake.length * 2 + 10)));
+        tempObject.scale.setScalar(Math.max(scale, currentSnake.width * 0.3));
 
         tempObject.updateMatrix();
         meshRef.current.setMatrixAt(segmentIndex, tempObject.matrix);
 
         segmentIndex++;
-        if (segmentIndex >= snake.length || segmentIndex >= maxSegments) break;
+        if (segmentIndex >= currentSnake.length || segmentIndex >= maxSegments) break;
       }
 
       distTravelled += segLen;
       prevP = p;
-      if (segmentIndex >= snake.length || segmentIndex >= maxSegments) break;
+      if (segmentIndex >= currentSnake.length || segmentIndex >= maxSegments) break;
     }
 
     // Hide unused instances

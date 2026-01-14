@@ -3,10 +3,14 @@ import { FoodState, SnakeState } from '../types';
 
 class GameEngine {
   public snakes: SnakeState[] = [];
+  public snakesMap: Map<string, SnakeState> = new Map();
   public food: FoodState[] = [];
   public mapSize: number = CONFIG.mapSize;
   public gameId: number = 0;
-  public stateVersion: number = 0;
+
+  // Versions to track changes
+  public stateVersion: number = 0; // Increments on every server tick
+  public rosterVersion: number = 0; // Increments only when snakes join/leave
 
   private ws: WebSocket | null = null;
   private clientId: string = Math.random().toString(36).substring(7);
@@ -29,6 +33,7 @@ class GameEngine {
       console.log('Connected to game server');
       this.isConnected = true;
       this.gameId++; // Trigger React update
+      this.rosterVersion++;
     };
 
     this.ws.onmessage = (event) => {
@@ -49,15 +54,36 @@ class GameEngine {
     this.ws.onclose = (event) => {
       console.log('Disconnected from game server:', event.code, event.reason);
       this.isConnected = false;
+      this.snakes = [];
+      this.snakesMap.clear();
+      this.rosterVersion++;
     };
   }
 
   private updateState(data: any) {
-    // Convert backend snakes map to frontend array
     const serverSnakes = data.snakes;
-    this.snakes = Object.keys(serverSnakes).map((id) => {
+    const serverIds = Object.keys(serverSnakes);
+
+    // Check for roster changes (joins/leaves)
+    let rosterChanged = false;
+    if (serverIds.length !== this.snakes.length) {
+      rosterChanged = true;
+    } else {
+      // If lengths match, check if any ID is new/gone.
+      // Since we rebuild the array anyway, we can just check existence in map.
+      for (const id of serverIds) {
+        if (!this.snakesMap.has(id)) {
+          rosterChanged = true;
+          break;
+        }
+      }
+    }
+
+    // Update Data
+    this.snakesMap.clear();
+    this.snakes = serverIds.map((id) => {
       const s = serverSnakes[id];
-      return {
+      const snakeState = {
         id: s.id,
         isPlayer: s.id === this.clientId,
         color: s.color,
@@ -72,7 +98,14 @@ class GameEngine {
         boost: s.boost,
         dead: s.dead,
       } as SnakeState;
+
+      this.snakesMap.set(id, snakeState);
+      return snakeState;
     });
+
+    if (rosterChanged) {
+      this.rosterVersion++;
+    }
 
     // Backend currently doesn't send food in state (optimized)
     // In a real app, food would be sent only when changed
@@ -84,8 +117,8 @@ class GameEngine {
   }
 
   public update(delta: number) {
-    // Authoritative server handles movement.
-    // Client only renders. No local prediction for MVP.
+    // Client side interpolation could go here globally, 
+    // but Snake components effectively handle it via lerping.
   }
 
   public setPlayerTargetAngle(angle: number) {
@@ -107,7 +140,11 @@ class GameEngine {
   }
 
   public getPlayer() {
-    return this.snakes.find(s => s.id === this.clientId);
+    return this.snakesMap.get(this.clientId);
+  }
+
+  public getSnake(id: string) {
+    return this.snakesMap.get(id);
   }
 
   public disconnect() {
@@ -117,7 +154,9 @@ class GameEngine {
     }
     this.isConnected = false;
     this.snakes = [];
+    this.snakesMap.clear();
     this.food = [];
+    this.rosterVersion++;
   }
 }
 

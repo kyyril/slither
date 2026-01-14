@@ -100,25 +100,27 @@ export const GameScene: React.FC = () => {
   const [gameId, setGameId] = useState(0);
 
   // Sync React state with GameEngine occasionally or on frame
+  // Sync React state with GameEngine occasionally or on frame
   useFrame((state, delta) => {
     gameEngine.update(delta);
 
     const engineSnakes = gameEngine.snakes;
     const engineId = gameEngine.gameId;
-    const engineVersion = gameEngine.stateVersion;
+    const engineRosterVersion = gameEngine.rosterVersion;
 
-    // Trigger re-render if connection changed, snake count changed, or state updated
+    // Only Trigger re-render if Roster changed (players join/leave) or Connection reset
+    // We DO NOT re-render on position updates (stateVersion). 
+    // Snake components will pull position data directly via refs.
     if (engineId !== gameId ||
-      engineSnakes.length !== snakes.length ||
-      stateVersionRef.current !== engineVersion) {
+      rosterVersionRef.current !== engineRosterVersion) {
 
-      stateVersionRef.current = engineVersion;
+      rosterVersionRef.current = engineRosterVersion;
       setGameId(engineId);
-      setSnakes([...engineSnakes]);
+      setSnakes([...engineSnakes]); // Only update list when structure changes
     }
   });
 
-  const stateVersionRef = useRef(0);
+  const rosterVersionRef = useRef(0);
 
   return (
     <>
