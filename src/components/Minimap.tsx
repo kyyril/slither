@@ -23,8 +23,8 @@ export const Minimap: React.FC = () => {
             ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.fill();
-            ctx.strokeStyle = 'rgba(0, 255, 204, 0.3)';
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
             ctx.stroke();
 
             const player = gameEngine.getPlayer();
@@ -55,11 +55,8 @@ export const Minimap: React.FC = () => {
                 const pulse = Math.sin(Date.now() / 200) * 0.5 + 1.5;
                 ctx.beginPath();
                 ctx.arc(px, py, 3 * pulse, 0, Math.PI * 2);
-                ctx.fillStyle = '#00ffcc';
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = '#00ffcc';
+                ctx.fillStyle = '#ffffff';
                 ctx.fill();
-                ctx.shadowBlur = 0;
             }
 
             animationFrameId = requestAnimationFrame(render);
@@ -70,7 +67,7 @@ export const Minimap: React.FC = () => {
     }, [mapRadius]);
 
     return (
-        <div className="absolute bottom-4 right-4 pointer-events-auto border-2 border-white/10 rounded-full overflow-hidden backdrop-blur-md shadow-2xl">
+        <div className="absolute bottom-4 right-4 pointer-events-auto rounded-full overflow-hidden bg-black/60 border border-white/20">
             <canvas
                 ref={canvasRef}
                 width={size}

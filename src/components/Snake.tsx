@@ -131,6 +131,19 @@ export const Snake: React.FC<SnakeProps> = ({ snake }) => {
       meshRef.current.setMatrixAt(i, tempObject.matrix);
     }
 
+    // 4. Update dynamic effects (Glow Pulse)
+    if (headRef.current) {
+      const material = headRef.current.material as THREE.MeshStandardMaterial;
+      const baseIntensity = currentSnake.boost ? 2.0 : 1.0;
+      const pulse = Math.sin(state.clock.elapsedTime * 10) * 0.2;
+      material.emissiveIntensity = baseIntensity + pulse;
+    }
+    if (meshRef.current) {
+      const material = meshRef.current.material as THREE.MeshStandardMaterial;
+      const baseIntensity = currentSnake.boost ? 1.5 : 0.6;
+      material.emissiveIntensity = baseIntensity;
+    }
+
     meshRef.current.instanceMatrix.needsUpdate = true;
   });
 
@@ -157,9 +170,9 @@ export const Snake: React.FC<SnakeProps> = ({ snake }) => {
         <meshStandardMaterial
           color={snake.color}
           emissive={snake.color}
-          emissiveIntensity={0.5}
-          roughness={0.4}
-          metalness={0.6}
+          emissiveIntensity={0.6}
+          roughness={0.3}
+          metalness={0.7}
         />
       </instancedMesh>
 
@@ -169,7 +182,7 @@ export const Snake: React.FC<SnakeProps> = ({ snake }) => {
         <meshStandardMaterial
           color={snake.color}
           emissive={snake.color}
-          emissiveIntensity={0.8}
+          emissiveIntensity={1}
         />
 
         {/* Eyes */}

@@ -42,8 +42,8 @@ const App: React.FC = () => {
 
       {gameState === 'connecting' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-50">
-          <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-cyan-400 font-bold tracking-widest animate-pulse">CONNECTING TO NEON ARENA...</p>
+          <div className="w-12 h-12 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4" />
+          <p className="text-white/60 font-bold tracking-widest animate-pulse">CONNECTING TO ARENA...</p>
         </div>
       )}
 

@@ -177,13 +177,13 @@ export const GameScene: React.FC = () => {
         <Snake key={snake.id} snake={snake} />
       ))}
 
-      {/* Effects */}
+      {/* Effects for snake glow */}
       <EffectComposer>
         <Bloom
-          luminanceThreshold={0.2}
+          luminanceThreshold={0.5}
           mipmapBlur
-          intensity={1.5}
-          radius={0.6}
+          intensity={1.2}
+          radius={0.4}
         />
       </EffectComposer>
     </>

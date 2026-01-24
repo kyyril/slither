@@ -56,10 +56,9 @@ export const FoodField: React.FC = () => {
       frustumCulled={false}
     >
       <icosahedronGeometry args={[0.5, 2]} /> {/* Smoother spheres for premium look */}
-      <meshStandardMaterial
-        emissiveIntensity={3}
-        toneMapped={false}
+      <meshBasicMaterial
         color="white"
+        toneMapped={false}
         transparent
         opacity={0.9}
       />

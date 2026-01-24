@@ -1,7 +1,7 @@
-# Neon Slither
+# Slither
 
 <p align="center">
-  <img src="docs/images/gameplay.png" alt="Neon Slither Gameplay" width="800"/>
+  <img src="https://res.cloudinary.com/da5ggxk01/image/upload/v1769285993/1f759294-4c58-454e-bd9e-39e7b3de8881.png" alt="Slither Gameplay" width="800"/>
 </p>
 
 <p align="center">
@@ -19,7 +19,7 @@
 
 ## Live Demo
 
-> **[Play Now](https://neon-slither.vercel.app)**
+> **[Play Now](https://slitherrrr.vercel.app)**
 
 **Performance Note**: The live demo backend runs on a **free-tier server** with extremely limited resources:
 
@@ -101,7 +101,7 @@ for _, other := range nearbyEntities {
 ## Architecture
 
 <p align="center">
-  <img src="docs/images/architecture.png" alt="Neon Slither Architecture" width="800"/>
+  <img src="https://res.cloudinary.com/da5ggxk01/image/upload/v1768419392/3984f6cb-3926-48ac-abd3-e2b6359a284c.png" alt="Slither Architecture" width="800"/>
 </p>
 
 ### Design Decisions
@@ -165,7 +165,7 @@ Open **http://localhost:5173** to play!
 ## Project Structure
 
 ```
-neon-slither/
+slither/
 ├── server/                    # Go Backend
 │   ├── engine/
 │   │   ├── game_engine.go     # Core game loop, physics, delta tracking
@@ -213,7 +213,7 @@ neon-slither/
 - [Slither.io](http://slither.io/) - Inspiration for gameplay mechanics
 - [Gorilla WebSocket](https://github.com/gorilla/websocket) - Production-grade WebSocket for Go
 - [React Three Fiber](https://github.com/pmndrs/react-three-fiber) - Declarative Three.js in React
-- [Postprocessing](https://github.com/pmndrs/postprocessing) - Neon bloom effects
+- [Postprocessing](https://github.com/pmndrs/postprocessing) - Bloom effects
 
 ---
 

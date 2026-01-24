@@ -1,5 +1,5 @@
 {
-  "name": "Neon Slither",
-  "description": "A high-performance Slither.io clone using React Three Fiber, InstancedMesh for rendering optimization, and Postprocessing for neon aesthetics.",
+  "name": "Slither",
+  "description": "A high-performance Slither.io clone using React Three Fiber, InstancedMesh for rendering optimization, and Postprocessing for bloom aesthetics.",
   "requestFramePermissions": []
 }

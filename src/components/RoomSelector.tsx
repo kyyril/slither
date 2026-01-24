@@ -33,11 +33,17 @@ export const RoomSelector: React.FC<RoomSelectorProps> = ({ onSelect }) => {
     }, []);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md">
-            <div className="w-full max-w-md p-8 bg-neutral-900 border border-cyan-500/30 rounded-3xl shadow-[0_0_50px_rgba(6,182,212,0.2)]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#050505]">
+            {/* Ambient Background Effects */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-white/5 blur-[120px] rounded-full"></div>
+                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]"></div>
+            </div>
+
+            <div className="relative w-full max-w-md p-8 bg-neutral-900/80 backdrop-blur-xl rounded-xl border border-white/5">
                 <div className="text-center mb-10">
-                    <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2 tracking-tighter">
-                        NEON SLITHER
+                    <h1 className="text-4xl font-black text-white mb-2 tracking-tighter">
+                        SLITHER
                     </h1>
                     <p className="text-neutral-500 font-medium">Select an arena to begin</p>
                 </div>
@@ -45,34 +51,33 @@ export const RoomSelector: React.FC<RoomSelectorProps> = ({ onSelect }) => {
                 <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                     {loading && rooms.length === 0 ? (
                         <div className="flex flex-col items-center py-10 space-y-4">
-                            <div className="w-8 h-8 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin"></div>
-                            <p className="text-cyan-500/50 text-sm font-bold uppercase tracking-widest">Finding Servers...</p>
+                            <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                            <p className="text-white/40 text-sm font-bold uppercase tracking-widest">Finding Servers...</p>
                         </div>
                     ) : (
                         rooms.map((room) => (
                             <button
                                 key={room.ID}
                                 onClick={() => onSelect(room.ID)}
-                                className="group relative w-full p-5 bg-neutral-800/50 hover:bg-neutral-800 border border-neutral-700 hover:border-cyan-500/50 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
+                                className="group relative w-full p-5 bg-neutral-800 hover:bg-neutral-700 rounded-xl transition-all"
                             >
                                 <div className="relative z-10 flex items-center justify-between">
                                     <div className="text-left">
-                                        <div className="text-white font-bold text-lg group-hover:text-cyan-400 transition-colors">
+                                        <div className="text-white font-bold text-lg">
                                             {room.ID}
                                         </div>
                                         <div className="flex items-center space-x-2 mt-1">
-                                            <div className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
+                                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                                             <span className="text-neutral-500 text-xs font-bold uppercase">Online</span>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-cyan-500 font-black text-xl italic leading-none">
+                                        <div className="text-white font-black text-xl italic leading-none">
                                             {room.Players}
                                         </div>
                                         <div className="text-neutral-600 text-[10px] font-bold uppercase tracking-tighter">Players</div>
                                     </div>
                                 </div>
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 blur-[80px] -mr-16 -mt-16 group-hover:bg-cyan-500/10 transition-all"></div>
                             </button>
                         ))
                     )}

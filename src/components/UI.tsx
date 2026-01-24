@@ -107,7 +107,7 @@ export const UI: React.FC<UIProps> = ({ onLeave }) => {
     <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
       {/* Score / Map UI */}
       <div className="absolute top-4 left-4 text-white font-mono">
-        <h1 className="text-2xl font-bold text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]">NEON SLITHER</h1>
+        <h1 className="text-2xl font-bold text-slate-200">SLITHER</h1>
         <p className="mt-2">Score: {score}</p>
         <p>Rank: {rank} / {totalPlayers + (isDead ? 1 : 0)}</p>
       </div>
@@ -115,7 +115,7 @@ export const UI: React.FC<UIProps> = ({ onLeave }) => {
       <div className="absolute top-4 right-4 flex gap-2 items-start">
         <button
           onClick={() => setIsMuted(!isMuted)}
-          className="pointer-events-auto p-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600 text-white rounded-md backdrop-blur-md transition-all active:scale-95 flex items-center justify-center h-[34px] w-[34px]"
+          className="pointer-events-auto p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-md transition-all active:scale-95 flex items-center justify-center h-[34px] w-[34px]"
           title={isMuted ? "Unmute Music" : "Mute Music"}
         >
           {isMuted ? (
@@ -126,7 +126,7 @@ export const UI: React.FC<UIProps> = ({ onLeave }) => {
         </button>
         <button
           onClick={onLeave}
-          className="pointer-events-auto px-4 py-1.5 bg-red-500/20 hover:bg-red-500/40 border border-red-500/50 text-red-100 text-xs font-bold rounded-md backdrop-blur-md transition-all active:scale-95 h-[34px]"
+          className="pointer-events-auto px-4 py-1.5 bg-red-900/60 hover:bg-red-800 text-red-100 text-xs font-bold rounded-md transition-all active:scale-95 h-[34px]"
         >
           QUIT GAME
         </button>
@@ -143,7 +143,7 @@ export const UI: React.FC<UIProps> = ({ onLeave }) => {
       {isDead && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/70 pointer-events-auto backdrop-blur-sm">
           <div className="text-center">
-            <h2 className="text-5xl font-bold text-red-500 mb-4 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">GAME OVER</h2>
+            <h2 className="text-5xl font-bold text-red-600 mb-4">GAME OVER</h2>
             <p className="text-xl text-white mb-8">Final Score: {score}</p>
             <div className="flex gap-4 justify-center">
               <button
@@ -154,7 +154,7 @@ export const UI: React.FC<UIProps> = ({ onLeave }) => {
               </button>
               <button
                 onClick={() => window.location.reload()}
-                className="px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-bold rounded-full shadow-[0_0_20px_rgba(6,182,212,0.6)] transition-all transform hover:scale-105"
+                className="px-8 py-3 bg-slate-200 hover:bg-white text-black font-bold rounded-full transition-all transform hover:scale-105"
               >
                 Respawn
               </button>
@@ -166,13 +166,13 @@ export const UI: React.FC<UIProps> = ({ onLeave }) => {
       {/* Mobile Orientation Warning */}
       {isPortrait && (
         <div className="absolute inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center pointer-events-auto">
-          <div className="text-cyan-500 mb-6 animate-pulse">
+          <div className="text-slate-200 mb-6 animate-pulse">
             <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6.364 6.364 0 0 0 9 9 9 9 0 1 1-9-9z"></path><path d="M19 12v9"></path><path d="M5 21v-7"></path></svg>
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">PLEASE ROTATE DEVICE</h2>
-          <p className="text-neutral-400 mb-8">Neon Slither requires landscape mode for the best experience.</p>
-          <div className="w-16 h-28 border-4 border-neutral-700 rounded-lg flex items-center justify-center animate-bounce">
-            <div className="w-full h-1 bg-cyan-500/50"></div>
+          <p className="text-neutral-400 mb-8">Slither requires landscape mode for the best experience.</p>
+          <div className="w-16 h-28 border-2 border-neutral-700 rounded-lg flex items-center justify-center animate-bounce">
+            <div className="w-full h-1 bg-white/30"></div>
           </div>
         </div>
       )}
@@ -181,7 +181,7 @@ export const UI: React.FC<UIProps> = ({ onLeave }) => {
       <div className="absolute bottom-4 right-4 pointer-events-auto sm:hidden">
         <button
           onClick={toggleFullscreen}
-          className="p-3 bg-neutral-800/80 text-cyan-400 rounded-full border border-cyan-500/30 backdrop-blur-md"
+          className="p-3 bg-neutral-800 text-slate-200 rounded-full"
         >
           {isFullscreen ? (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3" /><path d="M21 8h-3a2 2 0 0 1-2-2V3" /><path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" /></svg>

@@ -17,7 +17,7 @@ func main() {
 	roomManager := manager.NewRoomManager()
 
 	// Initialize default rooms
-	defaultRooms := []string{"Neon Arena", "Shadow Realm", "Zen Garden"}
+	defaultRooms := []string{"Main Arena", "Shadow Realm", "Zen Garden"}
 	for _, name := range defaultRooms {
 		roomName := name
 		roomManager.CreateRoom(roomName, func(state string) {
