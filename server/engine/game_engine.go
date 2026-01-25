@@ -117,6 +117,14 @@ func (e *GameEngine) Update() {
 		e.spawnFood()
 	}
 
+	// 0.1 Populate Grid for this tick
+	for _, food := range e.Food {
+		e.Grid.Insert(&gridFood{f: food})
+	}
+	for _, snake := range e.Snakes {
+		e.Grid.Insert(&gridSnake{s: snake})
+	}
+
 	// 1. Update Snakes
 	for _, snake := range e.Snakes {
 		snake.Mu.Lock()
@@ -172,13 +180,12 @@ func (e *GameEngine) Update() {
 			e.reclaimSnake(snake)
 		}
 		
-		// Insert into grid for spatial optimization (if used later)
-		e.Grid.Insert(&gridEntity{id: snake.ID, x: snake.Head.X, y: snake.Head.Y, isSnake: true})
+
 		
 		snake.Mu.Unlock()
 	}
 
-	// 2. Food Collision
+	// 2. Food Collision (Optimized with Spatial Hash)
 	for _, snake := range e.Snakes {
 		snake.Mu.Lock()
 		if snake.Dead {
@@ -186,32 +193,40 @@ func (e *GameEngine) Update() {
 			continue
 		}
 
-		// Check collision with food
+		// Query nearby entities
+		queryRadius := snake.Width + 2.0 // Check within a reasonable radius
+		nearby := e.Grid.Query(snake.Head.X, snake.Head.Y, queryRadius)
+		
 		foodToRemove := []float64{}
-		for id, food := range e.Food {
-			dx := snake.Head.X - food.X
-			dy := snake.Head.Y - food.Y
-			dist := math.Sqrt(dx*dx + dy*dy)
+		for _, entity := range nearby {
+			if gf, ok := entity.(*gridFood); ok {
+				food := gf.f
+				dx := snake.Head.X - food.X
+				dy := snake.Head.Y - food.Y
+				dist := math.Sqrt(dx*dx + dy*dy)
 
-			if dist < snake.Width+food.Size {
-				// Eat the food
-				snake.Score += int(food.Energy * 10)
-				snake.Length += food.Energy * 0.5
-				snake.Width = 1.5 + math.Min(2, snake.Length*0.01)
-				foodToRemove = append(foodToRemove, id)
+				if dist < snake.Width+food.Size {
+					// Eat the food
+					snake.Score += int(food.Energy * 10)
+					snake.Length += food.Energy * 0.5
+					snake.Width = 1.5 + math.Min(2, snake.Length*0.01)
+					foodToRemove = append(foodToRemove, food.ID)
+				}
 			}
 		}
 
 		// Remove eaten food and respawn
 		for _, id := range foodToRemove {
-			delete(e.Food, id)
-			e.tickEatenFood = append(e.tickEatenFood, id)
-			e.spawnFood()
+			if _, exists := e.Food[id]; exists {
+				delete(e.Food, id)
+				e.tickEatenFood = append(e.tickEatenFood, id)
+				e.spawnFood()
+			}
 		}
 		snake.Mu.Unlock()
 	}
 
-	// 3. Snake Collisions (Head to Body)
+	// 3. Snake Collisions (Optimized with Spatial Hash)
 	for _, snake := range e.Snakes {
 		snake.Mu.Lock()
 		if snake.Dead {
@@ -219,32 +234,36 @@ func (e *GameEngine) Update() {
 			continue
 		}
 		
-		// Check against all other snakes (and self, but skip head area)
-		for _, other := range e.Snakes {
-			// Skip self-locking if we were to lock 'other', 
-			// but 'other' fields are accessed read-only.
-			// NOTE: This is still slightly racy if other.Path is modified,
-			// but other is almost certainly updated in the same thread.
-			
-			// Collision threshold
-			threshold := (snake.Width + other.Width) * 0.5
-			thresholdSq := threshold * threshold
-			
-			// Collision with other snake's body
-			skipPoints := 18
-			for i, p := range other.Path {
-				if other.ID == snake.ID && i < skipPoints {
-					continue
-				}
+		// Query nearby entities (snakes)
+		queryRadius := snake.Width + 50.0 // Larger radius to covers body segments
+		nearby := e.Grid.Query(snake.Head.X, snake.Head.Y, queryRadius)
+		
+		for _, entity := range nearby {
+			if gs, ok := entity.(*gridSnake); ok {
+				other := gs.s
 				
-				dx := snake.Head.X - p.X
-				dy := snake.Head.Y - p.Y
-				distSq := dx*dx + dy*dy
+				// Collision threshold
+				threshold := (snake.Width + other.Width) * 0.5
+				thresholdSq := threshold * threshold
 				
-				if distSq < thresholdSq {
-					snake.Dead = true
-					e.reclaimSnake(snake)
-					break
+				// Collision with other snake's body
+				// Note: We still check the path. In a truly massive scale, 
+				// segments themselves would be in the grid, but for 50-100 snakes this is O(1) cell query.
+				skipPoints := 18
+				for i, p := range other.Path {
+					if other.ID == snake.ID && i < skipPoints {
+						continue
+					}
+					
+					dx := snake.Head.X - p.X
+					dy := snake.Head.Y - p.Y
+					distSq := dx*dx + dy*dy
+					
+					if distSq < thresholdSq {
+						snake.Dead = true
+						e.reclaimSnake(snake)
+						break
+					}
 				}
 			}
 			if snake.Dead {
@@ -361,12 +380,16 @@ func (e *GameEngine) RemoveSnake(id string) {
 
 
 
-// Helper for grid insertion
-type gridEntity struct {
-	id      string
-	x, y    float64
-	isSnake bool
+// Helper for grid insertion (Food)
+type gridFood struct {
+	f *models.Food
 }
+func (g *gridFood) GetPosition() (x, y float64) { return g.f.X, g.f.Y }
+func (g *gridFood) GetID() string              { return "" } // Not needed for queries
 
-func (g *gridEntity) GetPosition() (x, y float64) { return g.x, g.y }
-func (g *gridEntity) GetID() string              { return g.id }
+// Helper for grid insertion (Snake)
+type gridSnake struct {
+	s *models.Snake
+}
+func (g *gridSnake) GetPosition() (x, y float64) { return g.s.Head.X, g.s.Head.Y }
+func (g *gridSnake) GetID() string              { return g.s.ID }
