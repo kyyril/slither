@@ -16,7 +16,7 @@ const App: React.FC = () => {
         // Check if engine has successfully connected AND received initial state
         // We check 'snakes.length > 0' as a proxy for "state received" to be safe,
         // or we can add an accessor for isConnected
-        if (gameEngine.getIsConnected()) {
+        if (gameEngine.getIsConnected() && gameEngine.getHasReceivedInitialState()) {
           setGameState('playing');
         }
       }, 100);

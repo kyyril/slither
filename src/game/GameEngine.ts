@@ -166,6 +166,10 @@ class GameEngine {
     return this.isConnected;
   }
 
+  public getHasReceivedInitialState() {
+    return this.hasReceivedInitialState;
+  }
+
   public disconnect() {
     if (this.ws) {
       this.ws.close();

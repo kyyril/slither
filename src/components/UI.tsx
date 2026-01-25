@@ -63,7 +63,7 @@ export const UI: React.FC<UIProps> = ({ onLeave }) => {
         const sorted = [...snakes].sort((a, b) => b.score - a.score);
         const myRank = sorted.findIndex(s => s.id === player.id) + 1;
         setRank(myRank);
-      } else {
+      } else if (gameEngine.getHasReceivedInitialState()) {
         setIsDead(true);
       }
     }, 200); // 5fps UI update
