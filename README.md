@@ -1,7 +1,7 @@
 # Slither
 
 <p align="center">
-  <img src="https://res.cloudinary.com/da5ggxk01/image/upload/v1769285993/1f759294-4c58-454e-bd9e-39e7b3de8881.png" alt="Slither Gameplay" width="800"/>
+  <img src="https://res.cloudinary.com/da5ggxk01/image/upload/v1769732367/0c81f2e5-ce18-4d60-bef2-fb2c7f14c539.png" alt="Slither Gameplay" width="800"/>
 </p>
 
 <p align="center">
