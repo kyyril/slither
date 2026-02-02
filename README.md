@@ -101,7 +101,7 @@ for _, other := range nearbyEntities {
 ## Architecture
 
 <p align="center">
-  <img src="https://res.cloudinary.com/da5ggxk01/image/upload/v1768419392/3984f6cb-3926-48ac-abd3-e2b6359a284c.png" alt="Slither Architecture" width="800"/>
+  <img src="https://res.cloudinary.com/da5ggxk01/image/upload/v1770001615/eef6d0dc-aefb-489e-8aaa-2882a7032d27.png" alt="Slither Architecture" width="800"/>
 </p>
 
 ### Design Decisions
