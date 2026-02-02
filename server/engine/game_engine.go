@@ -8,8 +8,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/user/slither-server/config"
 	"github.com/user/slither-server/models"
 )
+
+type Leaderboard interface {
+	UpdateScore(playerName string, score int) error
+}
 
 const (
 	TickRate       = 30
@@ -30,19 +35,24 @@ type GameEngine struct {
 	Grid   *SpatialHashGrid
 	mu     sync.RWMutex
 	
-	OnUpdate func(state string) // Callback for broadcasting
+	RoomID   string
+	OnUpdate func(state string) // Keep for backward compatibility or local hooks
 	
+	Leaderboard Leaderboard // Redis Leaderboard integration
+
 	// Delta tracking buffers
 	tickNewFood   []*models.Food
 	tickEatenFood []float64
 }
 
-func NewGameEngine(onUpdate func(state string)) *GameEngine {
+func NewGameEngine(roomID string, onUpdate func(state string), leaderboard Leaderboard) *GameEngine {
 	e := &GameEngine{
 		Snakes:        make(map[string]*models.Snake),
 		Food:          make(map[float64]*models.Food),
 		Grid:          NewSpatialHashGrid(GridCellSize),
+		RoomID:        roomID,
 		OnUpdate:      onUpdate,
+		Leaderboard:   leaderboard,
 		tickNewFood:   make([]*models.Food, 0),
 		tickEatenFood: make([]float64, 0),
 	}
@@ -211,6 +221,11 @@ func (e *GameEngine) Update() {
 					snake.Length += food.Energy * 0.5
 					snake.Width = 1.5 + math.Min(2, snake.Length*0.01)
 					foodToRemove = append(foodToRemove, food.ID)
+
+					// Sync to Redis Leaderboard
+					if e.Leaderboard != nil {
+						go e.Leaderboard.UpdateScore(snake.PlayerName, snake.Score)
+					}
 				}
 			}
 		}
@@ -280,17 +295,20 @@ func (e *GameEngine) Update() {
 		}
 	}
 
-	// 5. Broadcasting
-	if e.OnUpdate != nil {
-		// Only send deltas (New Food & Eaten Food)
-		// Snakes are sent fully for now as they move every frame
-		
-		state := models.GameState{
-			Snakes:       e.Snakes,
-			Food:         e.tickNewFood,
-			EatenFoodIDs: e.tickEatenFood,
-		}
-		data, _ := json.Marshal(state)
+	// 5. Broadcasting via Redis Pub/Sub (Distributed)
+	state := map[string]interface{}{
+		"room_id":    e.RoomID,
+		"snakes":     e.Snakes,
+		"food":       e.tickNewFood,
+		"eatenFood":  e.tickEatenFood,
+	}
+	data, _ := json.Marshal(state)
+	
+	// Publish to Redis
+	if config.RedisClient != nil {
+		config.RedisClient.Publish(config.Ctx, "game:updates", data)
+	} else if e.OnUpdate != nil {
+		// Use local hook ONLY if Redis is not available to avoid double broadcast
 		e.OnUpdate(string(data))
 	}
 }
@@ -355,6 +373,11 @@ func (e *GameEngine) Join(id, name, color string) {
 }
 
 func (e *GameEngine) reclaimSnake(snake *models.Snake) {
+	// Final Score Sync to Redis
+	if e.Leaderboard != nil {
+		go e.Leaderboard.UpdateScore(snake.PlayerName, snake.Score)
+	}
+
 	for i, p := range snake.Path {
 		// Only spawn food for some segments
 		if i%2 == 0 {

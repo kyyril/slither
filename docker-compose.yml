@@ -11,6 +11,8 @@ services:
       - PORT=8080
       - ALLOWED_ORIGINS=*
       - REDIS_URL=${REDIS_URL}
+    env_file:
+      - .env.local
     networks:
       - slither-network
 

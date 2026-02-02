@@ -12,13 +12,15 @@ type Room struct {
 }
 
 type RoomManager struct {
-	Rooms map[string]*Room
-	mu    sync.RWMutex
+	Rooms       map[string]*Room
+	Leaderboard engine.Leaderboard
+	mu          sync.RWMutex
 }
 
-func NewRoomManager() *RoomManager {
+func NewRoomManager(lb engine.Leaderboard) *RoomManager {
 	return &RoomManager{
-		Rooms: make(map[string]*Room),
+		Rooms:       make(map[string]*Room),
+		Leaderboard: lb,
 	}
 }
 
@@ -28,7 +30,7 @@ func (rm *RoomManager) CreateRoom(id string, onUpdate func(state string)) *Room 
 
 	r := &Room{
 		ID:     id,
-		Engine: engine.NewGameEngine(onUpdate),
+		Engine: engine. NewGameEngine(id, onUpdate, rm.Leaderboard),
 	}
 	r.Engine.Start()
 	rm.Rooms[id] = r

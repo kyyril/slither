@@ -7,6 +7,8 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/redis/go-redis/v9"
+	"github.com/user/slither-server/config"
 	"github.com/user/slither-server/manager"
 )
 
@@ -51,8 +53,27 @@ func (h *Hub) BroadcastToRoom(roomID string, message []byte) {
 }
 
 func (h *Hub) Run() {
+	var ch <-chan *redis.Message
+	if config.RedisClient != nil {
+		// Subscribe to Redis updates for distributed broadcasting
+		pubsub := config.RedisClient.Subscribe(config.Ctx, "game:updates")
+		ch = pubsub.Channel()
+	}
+
 	for {
 		select {
+		case msg, ok := <-ch:
+			if !ok {
+				ch = nil // Stop listening if channel closes
+				continue
+			}
+			// Received update from Redis
+			var update map[string]interface{}
+			if err := json.Unmarshal([]byte(msg.Payload), &update); err == nil {
+				if roomID, ok := update["room_id"].(string); ok {
+					h.BroadcastToRoom(roomID, []byte(msg.Payload))
+				}
+			}
 		case client := <-h.Register:
 			h.mu.Lock()
 			h.Clients[client.ID] = client

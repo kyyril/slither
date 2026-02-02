@@ -6,15 +6,20 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/user/slither-server/config"
 	"github.com/user/slither-server/manager"
 	"github.com/user/slither-server/network"
 )
 
 func main() {
+	// Initialize Redis
+	config.InitRedis()
+
 	hub := network.NewHub()
 	go hub.Run()
 
-	roomManager := manager.NewRoomManager()
+	leaderboard := manager.NewLeaderboardManager()
+	roomManager := manager.NewRoomManager(leaderboard)
 
 	// Initialize default rooms
 	defaultRooms := []string{"Main Arena", "Shadow Realm", "Zen Garden"}
@@ -50,6 +55,21 @@ func main() {
 
 		if err := json.NewEncoder(w).Encode(rooms); err != nil {
 			log.Printf("Error encoding rooms: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+
+	http.HandleFunc("/leaderboard", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", allowedOrigins)
+		w.Header().Set("Content-Type", "application/json")
+		
+		top, err := leaderboard.GetTopScores(10)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if err := json.NewEncoder(w).Encode(top); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
